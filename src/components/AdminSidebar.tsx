@@ -158,7 +158,7 @@ export const adminNavModules: NavItem[] = [
   {
     name: "Manage Partners",
     icon: Handshake,
-    href: "/admin/dashboard",
+    href: "/admin/partners",
     hasSub: false,
   },
   {

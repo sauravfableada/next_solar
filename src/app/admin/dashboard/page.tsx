@@ -6,6 +6,9 @@ import Image from "next/image";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminHeader from "@/components/AdminHeader";
 import { useTheme } from "@/context/ThemeContext";
+import SolarDocumentsModal from "@/components/SolarDocumentsModal";
+import SubsidyBondModal from "@/components/SubsidyBondModal";
+import SavedDocumentsModal from "@/components/SavedDocumentsModal";
 import {
   LayoutDashboard,
   Users,
@@ -50,6 +53,9 @@ export default function AdminDashboardPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [dateFilter, setDateFilter] = useState("Month to date");
+  const [isSolarModalOpen, setIsSolarModalOpen] = useState(false);
+  const [isSubsidyModalOpen, setIsSubsidyModalOpen] = useState(false);
+  const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
 
   return (
     <div
@@ -84,30 +90,88 @@ export default function AdminDashboardPage() {
             DASHBOARD VIEW
            ========================================================================= */}
         <main className="p-6 sm:p-8 space-y-6 flex-1">
-          {/* Dashboard Header Bar */}
+          {/* Top Document Forms Banner (Matches Screenshot 10) */}
+          <div
+            className={`rounded-2xl p-5 sm:p-6 border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${
+              isDarkMode
+                ? "bg-[#0f172a] border-slate-800 text-white"
+                : "bg-white border-slate-200 text-slate-800"
+            }`}
+          >
+            <div>
+              <h2 className="text-lg font-bold">Document Forms</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Prepare solar documents and subsidy bond details.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsSavedModalOpen(true)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition ${
+                  isDarkMode
+                    ? "border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200"
+                    : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs"
+                }`}
+              >
+                <FolderOpen className="w-4 h-4 text-slate-500" />
+                <span>Saved Documents</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSolarModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#0e274c] hover:bg-[#16386b] text-white shadow-xs transition"
+              >
+                <Sun className="w-4 h-4 text-amber-400" />
+                <span>Solar Documents</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSubsidyModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#0e274c] hover:bg-[#16386b] text-white shadow-xs transition"
+              >
+                <FileCheck className="w-4 h-4 text-blue-400" />
+                <span>Subsidy Bond</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Dashboard Header Bar / Overview */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1
-                className={`text-2xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"
-                  }`}
+                className={`text-2xl font-black tracking-tight ${
+                  isDarkMode ? "text-white" : "text-slate-900"
+                }`}
               >
-                Welcome to CRM Dashboard
+                Overview
               </h1>
               <p className={`text-xs mt-1 ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
-                01 Nov 2026 to 12 Nov 2026. Activity overview for your assigned modules.
+                01 Nov 2026 to 13 Nov 2026. New leads use this period; other KPIs show current totals.
               </p>
             </div>
 
             {/* Date Range Selector */}
             <div className="flex items-center gap-2">
+              <button
+                className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold transition ${
+                  isDarkMode
+                    ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                <span>Today&apos;s overview</span>
+              </button>
               <div className="relative">
                 <select
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className={`px-3 py-2 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8 transition-colors ${isDarkMode
-                    ? "bg-slate-800 border-slate-700 text-slate-200"
-                    : "bg-white border-slate-200 text-slate-700"
-                    }`}
+                  className={`px-3 py-2 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8 transition-colors ${
+                    isDarkMode
+                      ? "bg-slate-800 border-slate-700 text-slate-200"
+                      : "bg-white border-slate-200 text-slate-700"
+                  }`}
                 >
                   <option>Month to date</option>
                   <option>Today</option>
@@ -116,7 +180,7 @@ export default function AdminDashboardPage() {
                   <option>Year to date</option>
                 </select>
               </div>
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm">
+              <button className="px-4 py-2 bg-[#0e274c] hover:bg-[#16386b] text-white text-xs font-bold rounded-xl transition-colors shadow-sm">
                 Apply
               </button>
             </div>
@@ -126,20 +190,22 @@ export default function AdminDashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Card 1: New Leads */}
             <div
-              className={`rounded-2xl p-5 border shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors ${isDarkMode ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-200"
-                }`}
+              className={`rounded-2xl p-5 border shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors ${
+                isDarkMode ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-200"
+              }`}
             >
               <div>
                 <div className="text-xs font-bold text-slate-400">New Leads</div>
                 <div
-                  className={`text-3xl font-black mt-2 font-mono ${isDarkMode ? "text-white" : "text-slate-900"
-                    }`}
+                  className={`text-3xl font-black mt-2 font-mono ${
+                    isDarkMode ? "text-white" : "text-slate-900"
+                  }`}
                 >
                   00
                 </div>
               </div>
               <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/50 dark:border-slate-800 text-[11px] text-slate-400">
-                <span>Selected period: -100% vs previous</span>
+                <span>Selected period</span>
                 <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
                   ⚡
                 </span>
@@ -148,14 +214,16 @@ export default function AdminDashboardPage() {
 
             {/* Card 2: Open Deals */}
             <div
-              className={`rounded-2xl p-5 border shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors ${isDarkMode ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-200"
-                }`}
+              className={`rounded-2xl p-5 border shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors ${
+                isDarkMode ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-200"
+              }`}
             >
               <div>
                 <div className="text-xs font-bold text-slate-400">Open Deals</div>
                 <div
-                  className={`text-3xl font-black mt-2 font-mono ${isDarkMode ? "text-white" : "text-slate-900"
-                    }`}
+                  className={`text-3xl font-black mt-2 font-mono ${
+                    isDarkMode ? "text-white" : "text-slate-900"
+                  }`}
                 >
                   01
                 </div>
@@ -170,16 +238,18 @@ export default function AdminDashboardPage() {
 
             {/* Card 3: Pending Follow-ups */}
             <div
-              className={`rounded-2xl p-5 border shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors ${isDarkMode ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-200"
-                }`}
+              className={`rounded-2xl p-5 border shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors ${
+                isDarkMode ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-200"
+              }`}
             >
               <div>
                 <div className="text-xs font-bold text-slate-400">
                   Pending Follow-ups
                 </div>
                 <div
-                  className={`text-3xl font-black mt-2 font-mono ${isDarkMode ? "text-white" : "text-slate-900"
-                    }`}
+                  className={`text-3xl font-black mt-2 font-mono ${
+                    isDarkMode ? "text-white" : "text-slate-900"
+                  }`}
                 >
                   00
                 </div>
@@ -194,22 +264,24 @@ export default function AdminDashboardPage() {
 
             {/* Card 4: Outstanding Payments */}
             <div
-              className={`rounded-2xl p-5 border shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors ${isDarkMode ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-200"
-                }`}
+              className={`rounded-2xl p-5 border shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors ${
+                isDarkMode ? "bg-[#0f172a] border-slate-800" : "bg-white border-slate-200"
+              }`}
             >
               <div>
                 <div className="text-xs font-bold text-slate-400">
                   Outstanding Payments
                 </div>
                 <div
-                  className={`text-3xl font-black mt-2 font-mono ${isDarkMode ? "text-white" : "text-slate-900"
-                    }`}
+                  className={`text-3xl font-black mt-2 font-mono ${
+                    isDarkMode ? "text-white" : "text-slate-900"
+                  }`}
                 >
-                  0
+                  00
                 </div>
               </div>
               <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/50 dark:border-slate-800 text-[11px] text-slate-400">
-                <span>Current invoice balances</span>
+                <span>Invoices with an unpaid balance</span>
                 <span className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
                   💼
                 </span>
@@ -776,6 +848,32 @@ export default function AdminDashboardPage() {
           )}
         </main>
       </div>
+
+      {/* Solar Documents Modal */}
+      <SolarDocumentsModal
+        isOpen={isSolarModalOpen}
+        onClose={() => setIsSolarModalOpen(false)}
+      />
+
+      {/* Subsidy Bond Modal */}
+      <SubsidyBondModal
+        isOpen={isSubsidyModalOpen}
+        onClose={() => setIsSubsidyModalOpen(false)}
+      />
+
+      {/* Saved Documents Modal */}
+      <SavedDocumentsModal
+        isOpen={isSavedModalOpen}
+        onClose={() => setIsSavedModalOpen(false)}
+        onOpenDocument={(doc) => {
+          setIsSavedModalOpen(false);
+          if (doc.documentType === "Subsidy Bond") {
+            setIsSubsidyModalOpen(true);
+          } else {
+            setIsSolarModalOpen(true);
+          }
+        }}
+      />
     </div>
   );
 }
