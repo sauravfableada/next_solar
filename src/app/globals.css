@@ -1,26 +1,94 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-jost), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  background-color: #ffffff;
+  color: #172a1d;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5ee;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a5a3b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #193e25;
+}
+
+/* Continuous slow rotation animation for the 3D globe */
+@keyframes spinGlobe {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-globe {
+  animation: spinGlobe 60s linear infinite;
+}
+
+.animate-spin-globe:hover {
+  animation-play-state: paused;
+}
+
+/* Floating animation specifically for the stat icons */
+@keyframes floatIcon {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float-icon-1 {
+  animation: floatIcon 3.2s ease-in-out infinite;
+}
+
+.animate-float-icon-2 {
+  animation: floatIcon 3.6s ease-in-out infinite 0.4s;
+}
+
+.animate-float-icon-3 {
+  animation: floatIcon 3.4s ease-in-out infinite 0.8s;
+}
+
+.animate-float-icon-4 {
+  animation: floatIcon 3.8s ease-in-out infinite 1.2s;
+}
+
+/* Orbit ring pulse */
+@keyframes pulseRing {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulseRing 6s ease-in-out infinite;
+}
+
+/* Input slider styling */
+input[type="range"] {
+  accent-color: #1a4d2e;
 }
