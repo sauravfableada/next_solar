@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminHeader from "@/components/AdminHeader";
 import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
+import { settingsService } from "@/services/api/settings";
 import {
   LayoutDashboard,
   Users,
@@ -44,13 +46,14 @@ import {
   ShieldCheck,
   RefreshCw,
   Save,
+  Upload,
 } from "lucide-react";
 
 // Social SVG Icons
 function FacebookIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
     </svg>
   );
 }
@@ -58,24 +61,141 @@ function FacebookIcon({ className = "w-5 h-5" }: { className?: string }) {
 function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-      <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
     </svg>
   );
 }
 
 export default function SettingsPage() {
+  const { success: toastSuccess, error: toastError } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const { isDarkMode } = useTheme();
 
-  // Top Tabs: Integrations | Financial Information | Table Clear | Estimate/Invoice setting
+  // Top Tabs: General Settings | Integrations | Financial Information | Table Clear | Estimate/Invoice setting
   const [activeMainTab, setActiveMainTab] = useState<
-    "Integrations" | "Financial Information" | "Table Clear" | "Estimate/Invoice setting"
-  >("Integrations");
+    "General Settings" | "Integrations" | "Financial Information" | "Table Clear" | "Estimate/Invoice setting"
+  >("General Settings");
 
-  // Sub Tabs under Integrations: Social Media Integration | WhatsApp Integration | Email SMTP | Google Connection
+  // General Settings State
+  const [generalConfig, setGeneralConfig] = useState({
+    companyName: "Fablead Developers Technolab",
+    brandTitle: "Bharat Solar & CRM Solutions",
+    contactEmail: "info@fableadtech.com",
+    contactPhone: "+91 98705 43210",
+    supportEmail: "support@fableadtech.com",
+    companyAddress: "Solar Business Hub, Ring Road, Gujarat, India",
+    defaultTimezone: "Asia/Kolkata (IST +5:30)",
+    dateFormat: "DD/MM/YYYY",
+    currencySymbol: "₹ (INR)",
+    enableCustomerSelfRegistration: true,
+    enableEmailNotifications: true,
+    enableSmsAlerts: true,
+    enableMaintenanceMode: false,
+    companyLogo: "/images/Fablead_CRM.jpg",
+    shortLogo: "/images/fablead-crm-logo.png",
+  });
+  const [companyLogoPreview, setCompanyLogoPreview] = useState("/images/Fablead_CRM.jpg");
+  const [shortLogoPreview, setShortLogoPreview] = useState("/images/fablead-crm-logo.png");
+
+  // Load Dynamic Settings from Backend on mount
+  useEffect(() => {
+    async function loadBackendSettings() {
+      try {
+        const res = await settingsService.getSettings();
+        if (res?.data) {
+          const d = res.data;
+          setGeneralConfig((prev) => ({
+            ...prev,
+            companyName: d.company_name ?? prev.companyName,
+            brandTitle: d.brand_title ?? prev.brandTitle,
+            contactEmail: d.contact_email ?? prev.contactEmail,
+            contactPhone: d.contact_phone ?? prev.contactPhone,
+            supportEmail: d.support_email ?? prev.supportEmail,
+            companyAddress: d.company_address ?? prev.companyAddress,
+            defaultTimezone: d.default_timezone ?? prev.defaultTimezone,
+            dateFormat: d.date_format ?? prev.dateFormat,
+            currencySymbol: d.currency_symbol ?? prev.currencySymbol,
+            enableEmailNotifications: d.enable_email_notifications ?? prev.enableEmailNotifications,
+            enableSmsAlerts: d.enable_sms_alerts ?? prev.enableSmsAlerts,
+            companyLogo: d.company_logo ?? prev.companyLogo,
+            shortLogo: d.short_logo ?? prev.shortLogo,
+          }));
+
+          if (d.company_logo) setCompanyLogoPreview(d.company_logo);
+          if (d.short_logo) setShortLogoPreview(d.short_logo);
+
+          // Integrations
+          if (d.fb_app_id) {
+            setFbConfig((prev) => ({
+              ...prev,
+              appId: d.fb_app_id ?? prev.appId,
+              accessToken: d.fb_access_token ?? prev.accessToken,
+              pageId: d.fb_page_id ?? prev.pageId,
+              pixelId: d.fb_pixel_id ?? prev.pixelId,
+            }));
+          }
+
+          // Financial
+          if (d.tax_name || d.pan_no) {
+            setFinancialConfig((prev) => ({
+              ...prev,
+              currency: d.currency ?? prev.currency,
+              taxName: d.tax_name ?? prev.taxName,
+              taxRate: d.tax_rate ?? prev.taxRate,
+              panNo: d.pan_no ?? prev.panNo,
+              gstNo: d.gst_no ?? prev.gstNo,
+              bankName: d.bank_name ?? prev.bankName,
+              accountNumber: d.account_number ?? prev.accountNumber,
+              ifscCode: d.ifsc_code ?? prev.ifscCode,
+            }));
+          }
+        }
+      } catch (e) {
+        // Fallback to initial client values
+      }
+    }
+    loadBackendSettings();
+  }, []);
+
+  const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null);
+  const [shortLogoFile, setShortLogoFile] = useState<File | null>(null);
+  const [isSavingGeneral, setIsSavingGeneral] = useState(false);
+
+  const handleSaveGeneral = async () => {
+    setIsSavingGeneral(true);
+    try {
+      const formData = new FormData();
+      formData.append("group", "general");
+      formData.append("company_name", generalConfig.companyName);
+      formData.append("brand_title", generalConfig.brandTitle);
+      formData.append("contact_email", generalConfig.contactEmail);
+      formData.append("contact_phone", generalConfig.contactPhone);
+      formData.append("support_email", generalConfig.supportEmail);
+      formData.append("company_address", generalConfig.companyAddress);
+      formData.append("default_timezone", generalConfig.defaultTimezone);
+      formData.append("date_format", generalConfig.dateFormat);
+      formData.append("currency_symbol", generalConfig.currencySymbol);
+      formData.append("enable_email_notifications", String(generalConfig.enableEmailNotifications));
+      formData.append("enable_sms_alerts", String(generalConfig.enableSmsAlerts));
+
+      if (companyLogoFile) {
+        formData.append("company_logo", companyLogoFile);
+      }
+      if (shortLogoFile) {
+        formData.append("short_logo", shortLogoFile);
+      }
+
+      await settingsService.saveSettings(formData);
+      toastSuccess("General settings and logos saved to database!", "General Settings");
+    } catch (err: any) {
+      toastError(err?.message || "Failed to save settings.", "Save Error");
+    } finally {
+      setIsSavingGeneral(false);
+    }
+  };
   const [activeIntegrationTab, setActiveIntegrationTab] = useState<
     "Social Media Integration" | "WhatsApp Integration" | "Email SMTP" | "Google Connection"
   >("Social Media Integration");
@@ -173,9 +293,8 @@ export default function SettingsPage() {
 
   return (
     <div
-      className={`min-h-screen flex font-sans antialiased transition-colors duration-300 ${
-        isDarkMode ? "bg-[#0b1329] text-slate-100" : "bg-[#f1f5f9] text-[#1e293b]"
-      }`}
+      className={`min-h-screen flex font-sans antialiased transition-colors duration-300 ${isDarkMode ? "bg-[#0b1329] text-slate-100" : "bg-[#f1f5f9] text-[#1e293b]"
+        }`}
     >
       {/* Toast Notification */}
       {toastMessage && (
@@ -189,9 +308,8 @@ export default function SettingsPage() {
           LEFT SIDEBAR (Consistent with Admin CRM)
          ========================================================================= */}
       <aside
-        className={`bg-[#0f172a] text-slate-300 flex flex-col justify-between transition-all duration-300 fixed inset-y-0 left-0 z-40 border-r border-slate-800 ${
-          sidebarCollapsed ? "w-20" : "w-64"
-        }`}
+        className={`bg-[#0f172a] text-slate-300 flex flex-col justify-between transition-all duration-300 fixed inset-y-0 left-0 z-40 border-r border-slate-800 ${sidebarCollapsed ? "w-20" : "w-64"
+          }`}
       >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Top Logo Container */}
@@ -282,9 +400,8 @@ export default function SettingsPage() {
           MAIN CONTENT AREA
          ========================================================================= */}
       <main
-        className={`flex-1 transition-all duration-300 ${
-          sidebarCollapsed ? "ml-20" : "ml-64"
-        } flex flex-col min-h-screen`}
+        className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? "ml-20" : "ml-64"
+          } flex flex-col min-h-screen`}
       >
         {/* TOP NAVBAR */}
         <AdminHeader sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed} />
@@ -296,9 +413,8 @@ export default function SettingsPage() {
           {/* Header Title & Subtitle */}
           <div>
             <h1
-              className={`text-2xl font-bold tracking-tight ${
-                isDarkMode ? "text-white" : "text-slate-900"
-              }`}
+              className={`text-2xl font-bold tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"
+                }`}
             >
               Settings
             </h1>
@@ -307,9 +423,10 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {/* MAIN TABS PILLS: Integrations | Financial Information | Table Clear | Estimate/Invoice setting */}
+          {/* MAIN TABS PILLS */}
           <div className="flex flex-wrap items-center gap-2">
             {[
+              { id: "General Settings", label: "General Settings" },
               { id: "Integrations", label: "Integrations" },
               { id: "Financial Information", label: "Financial Information" },
               { id: "Table Clear", label: "Table Clear" },
@@ -320,13 +437,12 @@ export default function SettingsPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveMainTab(tab.id as any)}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all shadow-sm ${
-                    isActive
-                      ? "bg-[#142952] text-white shadow-blue-900/20"
+                  className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all shadow-sm cursor-pointer ${isActive
+                      ? "bg-[#142952] text-white shadow-blue-900/20 font-bold"
                       : isDarkMode
-                      ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                      : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-                  }`}
+                        ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                        : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -335,19 +451,388 @@ export default function SettingsPage() {
           </div>
 
           {/* =====================================================================
+              MAIN TAB 0: GENERAL SETTINGS
+             ===================================================================== */}
+          {activeMainTab === "General Settings" && (
+            <div
+              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
+                }`}
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div>
+                  <h2
+                    className={`text-sm font-bold tracking-wide uppercase ${isDarkMode ? "text-slate-200" : "text-slate-800"
+                      }`}
+                  >
+                    General System Settings
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Configure your solar organization profile, regional defaults, and global platform flags.
+                  </p>
+                </div>
+                <button
+                  disabled={isSavingGeneral}
+                  onClick={handleSaveGeneral}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-md cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSavingGeneral ? "Saving..." : "Save General Settings"}</span>
+                </button>
+              </div>
+
+              {/* Organization Info Form */}
+              <div className="space-y-6">
+                {/* LOGO MANAGEMENT SECTION */}
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-3">
+                    Company Logos & Branding
+                  </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Primary Company Logo */}
+                    <div
+                      className={`p-5 rounded-2xl border ${isDarkMode
+                          ? "bg-slate-800/40 border-slate-700/60"
+                          : "bg-slate-50 border-slate-200"
+                        } space-y-3.5`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Company Full Logo
+                          </h4>
+                          <p className="text-[11px] text-slate-400">
+                            Displayed on header, invoices, PDF documents & sidebar
+                          </p>
+                        </div>
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                          Primary
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="w-40 h-16 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center shadow-xs overflow-hidden relative">
+                          <Image
+                            src={companyLogoPreview}
+                            alt="Company Logo Preview"
+                            fill
+                            unoptimized={companyLogoPreview.startsWith("blob:")}
+                            className="object-contain p-1"
+                          />
+                        </div>
+
+                        <div className="flex-1 space-y-1.5">
+                          <label className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer shadow-sm transition">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Change Logo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  const file = e.target.files[0];
+                                  setCompanyLogoFile(file);
+                                  const url = URL.createObjectURL(file);
+                                  setCompanyLogoPreview(url);
+                                  toastSuccess("Company logo selected!", "Logo Upload");
+                                }
+                              }}
+                            />
+                          </label>
+                          <p className="text-[10px] text-slate-400">
+                            Recommended: PNG/JPG with transparent or white background (max 5 MB)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Short / Compact Icon Logo */}
+                    <div
+                      className={`p-5 rounded-2xl border ${isDarkMode
+                          ? "bg-slate-800/40 border-slate-700/60"
+                          : "bg-slate-50 border-slate-200"
+                        } space-y-3.5`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Short Logo / Favicon
+                          </h4>
+                          <p className="text-[11px] text-slate-400">
+                            Collapsed sidebar icon, mobile header, and browser favicon
+                          </p>
+                        </div>
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                          Compact
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center shadow-xs overflow-hidden relative">
+                          <Image
+                            src={shortLogoPreview}
+                            alt="Short Logo Preview"
+                            fill
+                            unoptimized={shortLogoPreview.startsWith("blob:")}
+                            className="object-contain p-1"
+                          />
+                        </div>
+
+                        <div className="flex-1 space-y-1.5">
+                          <label className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0f274a] hover:bg-[#163560] text-white text-xs font-semibold cursor-pointer shadow-sm transition">
+                            <Upload className="w-3.5 h-3.5 text-blue-400" />
+                            <span>Change Short Logo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  const file = e.target.files[0];
+                                  setShortLogoFile(file);
+                                  const url = URL.createObjectURL(file);
+                                  setShortLogoPreview(url);
+                                  toastSuccess("Short logo selected!", "Icon Upload");
+                                }
+                              }}
+                            />
+                          </label>
+                          <p className="text-[10px] text-slate-400">
+                            Recommended: Square 1:1 ratio (PNG/SVG, 128x128px)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block pt-2">
+                  Company & Brand Profile
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+                  <div>
+                    <label className="block font-bold mb-1.5 text-slate-600 dark:text-slate-300">
+                      Company Name
+                    </label>
+                    <input
+                      type="text"
+                      value={generalConfig.companyName}
+                      onChange={(e) =>
+                        setGeneralConfig({ ...generalConfig, companyName: e.target.value })
+                      }
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-medium transition ${isDarkMode
+                          ? "bg-slate-800 border-slate-700 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-1.5 text-slate-600 dark:text-slate-300">
+                      Brand / Suite Title
+                    </label>
+                    <input
+                      type="text"
+                      value={generalConfig.brandTitle}
+                      onChange={(e) =>
+                        setGeneralConfig({ ...generalConfig, brandTitle: e.target.value })
+                      }
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-medium transition ${isDarkMode
+                          ? "bg-slate-800 border-slate-700 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-1.5 text-slate-600 dark:text-slate-300">
+                      Official Contact Email
+                    </label>
+                    <input
+                      type="email"
+                      value={generalConfig.contactEmail}
+                      onChange={(e) =>
+                        setGeneralConfig({ ...generalConfig, contactEmail: e.target.value })
+                      }
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-medium transition ${isDarkMode
+                          ? "bg-slate-800 border-slate-700 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-1.5 text-slate-600 dark:text-slate-300">
+                      Contact Phone / Hotline
+                    </label>
+                    <input
+                      type="text"
+                      value={generalConfig.contactPhone}
+                      onChange={(e) =>
+                        setGeneralConfig({ ...generalConfig, contactPhone: e.target.value })
+                      }
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-medium transition ${isDarkMode
+                          ? "bg-slate-800 border-slate-700 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block font-bold mb-1.5 text-slate-600 dark:text-slate-300">
+                      Headquarters Address
+                    </label>
+                    <input
+                      type="text"
+                      value={generalConfig.companyAddress}
+                      onChange={(e) =>
+                        setGeneralConfig({ ...generalConfig, companyAddress: e.target.value })
+                      }
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-medium transition ${isDarkMode
+                          ? "bg-slate-800 border-slate-700 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Localization & Region Defaults */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                  Regional & Localization
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+                  <div>
+                    <label className="block font-bold mb-1.5 text-slate-600 dark:text-slate-300">
+                      Timezone
+                    </label>
+                    <select
+                      value={generalConfig.defaultTimezone}
+                      onChange={(e) =>
+                        setGeneralConfig({ ...generalConfig, defaultTimezone: e.target.value })
+                      }
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-medium transition ${isDarkMode
+                          ? "bg-slate-800 border-slate-700 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                    >
+                      <option value="Asia/Kolkata (IST +5:30)">Asia/Kolkata (IST +5:30)</option>
+                      <option value="Asia/Dubai (GST +4:00)">Asia/Dubai (GST +4:00)</option>
+                      <option value="UTC">UTC Universal (GMT)</option>
+                      <option value="America/New_York (EST)">America/New_York (EST)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-1.5 text-slate-600 dark:text-slate-300">
+                      Date Format
+                    </label>
+                    <select
+                      value={generalConfig.dateFormat}
+                      onChange={(e) =>
+                        setGeneralConfig({ ...generalConfig, dateFormat: e.target.value })
+                      }
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-medium transition ${isDarkMode
+                          ? "bg-slate-800 border-slate-700 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                    >
+                      <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 14/11/2026)</option>
+                      <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 11/14/2026)</option>
+                      <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-11-14)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-1.5 text-slate-600 dark:text-slate-300">
+                      Default Currency
+                    </label>
+                    <select
+                      value={generalConfig.currencySymbol}
+                      onChange={(e) =>
+                        setGeneralConfig({ ...generalConfig, currencySymbol: e.target.value })
+                      }
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none font-medium transition ${isDarkMode
+                          ? "bg-slate-800 border-slate-700 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                    >
+                      <option value="₹ (INR)">₹ - Indian Rupee (INR)</option>
+                      <option value="$ (USD)">$ - US Dollar (USD)</option>
+                      <option value="AED (AED)">AED - UAE Dirham (AED)</option>
+                      <option value="€ (EUR)">€ - Euro (EUR)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Flags & Features */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                  Platform Preferences
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <label className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer">
+                    <div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200">
+                        Email Notifications
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        Trigger automated customer quotation & invoice emails
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={generalConfig.enableEmailNotifications}
+                      onChange={(e) =>
+                        setGeneralConfig({
+                          ...generalConfig,
+                          enableEmailNotifications: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded text-blue-600"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer">
+                    <div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200">
+                        SMS & WhatsApp Dispatch
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        Send real-time alerts to customers during workflow stages
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={generalConfig.enableSmsAlerts}
+                      onChange={(e) =>
+                        setGeneralConfig({
+                          ...generalConfig,
+                          enableSmsAlerts: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded text-blue-600"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =====================================================================
               MAIN TAB 1: INTEGRATIONS (Screenshot Match)
              ===================================================================== */}
           {activeMainTab === "Integrations" && (
             <div
-              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${
-                isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
-              }`}
+              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
+                }`}
             >
               {/* Inner heading */}
               <h2
-                className={`text-sm font-bold tracking-wide uppercase ${
-                  isDarkMode ? "text-slate-300" : "text-slate-700"
-                }`}
+                className={`text-sm font-bold tracking-wide uppercase ${isDarkMode ? "text-slate-300" : "text-slate-700"
+                  }`}
               >
                 Integrations
               </h2>
@@ -365,11 +850,10 @@ export default function SettingsPage() {
                     <button
                       key={subTab.id}
                       onClick={() => setActiveIntegrationTab(subTab.id as any)}
-                      className={`relative pb-3 transition whitespace-nowrap ${
-                        isActive
+                      className={`relative pb-3 transition whitespace-nowrap ${isActive
                           ? "text-[#142952] dark:text-blue-400 font-bold"
                           : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                      }`}
+                        }`}
                     >
                       {subTab.label}
                       {isActive && (
@@ -386,9 +870,8 @@ export default function SettingsPage() {
                   {/* Enable Switch Row */}
                   <div className="flex items-center justify-between py-2">
                     <span
-                      className={`text-sm font-semibold ${
-                        isDarkMode ? "text-slate-200" : "text-slate-800"
-                      }`}
+                      className={`text-sm font-semibold ${isDarkMode ? "text-slate-200" : "text-slate-800"
+                        }`}
                     >
                       Integrations
                     </span>
@@ -396,14 +879,12 @@ export default function SettingsPage() {
                       <span className="text-xs text-slate-500 font-medium">Enable</span>
                       <button
                         onClick={() => setIntegrationsEnabled(!integrationsEnabled)}
-                        className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out ${
-                          integrationsEnabled ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700"
-                        }`}
+                        className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out ${integrationsEnabled ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700"
+                          }`}
                       >
                         <div
-                          className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                            integrationsEnabled ? "translate-x-5" : "translate-x-0"
-                          }`}
+                          className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${integrationsEnabled ? "translate-x-5" : "translate-x-0"
+                            }`}
                         />
                       </button>
                     </div>
@@ -411,11 +892,10 @@ export default function SettingsPage() {
 
                   {/* 1. Facebook Ads Accordion Card */}
                   <div
-                    className={`rounded-2xl border transition-all ${
-                      isDarkMode
+                    className={`rounded-2xl border transition-all ${isDarkMode
                         ? "border-slate-800 bg-[#0d1527]"
                         : "border-slate-200 bg-[#f8fafc]"
-                    }`}
+                      }`}
                   >
                     <button
                       onClick={() => toggleAccordion("facebook")}
@@ -426,17 +906,15 @@ export default function SettingsPage() {
                           <FacebookIcon className="w-5 h-5 fill-white text-white" />
                         </div>
                         <span
-                          className={`text-sm font-bold ${
-                            isDarkMode ? "text-white" : "text-slate-800"
-                          }`}
+                          className={`text-sm font-bold ${isDarkMode ? "text-white" : "text-slate-800"
+                            }`}
                         >
                           Facebook Ads
                         </span>
                       </div>
                       <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                          openAccordions.facebook ? "transform rotate-180" : ""
-                        }`}
+                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${openAccordions.facebook ? "transform rotate-180" : ""
+                          }`}
                       />
                     </button>
 
@@ -453,11 +931,10 @@ export default function SettingsPage() {
                               onChange={(e) =>
                                 setFbConfig({ ...fbConfig, appId: e.target.value })
                               }
-                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                                isDarkMode
+                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                                   ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                                   : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                              }`}
+                                }`}
                             />
                           </div>
                           <div>
@@ -470,11 +947,10 @@ export default function SettingsPage() {
                               onChange={(e) =>
                                 setFbConfig({ ...fbConfig, appSecret: e.target.value })
                               }
-                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                                isDarkMode
+                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                                   ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                                   : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                              }`}
+                                }`}
                             />
                           </div>
                           <div className="md:col-span-2">
@@ -487,11 +963,10 @@ export default function SettingsPage() {
                               onChange={(e) =>
                                 setFbConfig({ ...fbConfig, accessToken: e.target.value })
                               }
-                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                                isDarkMode
+                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                                   ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                                   : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                              }`}
+                                }`}
                             />
                           </div>
                         </div>
@@ -511,11 +986,10 @@ export default function SettingsPage() {
 
                   {/* 2. Google Ads Accordion Card */}
                   <div
-                    className={`rounded-2xl border transition-all ${
-                      isDarkMode
+                    className={`rounded-2xl border transition-all ${isDarkMode
                         ? "border-slate-800 bg-[#0d1527]"
                         : "border-slate-200 bg-[#f8fafc]"
-                    }`}
+                      }`}
                   >
                     <button
                       onClick={() => toggleAccordion("google")}
@@ -544,17 +1018,15 @@ export default function SettingsPage() {
                           </svg>
                         </div>
                         <span
-                          className={`text-sm font-bold ${
-                            isDarkMode ? "text-white" : "text-slate-800"
-                          }`}
+                          className={`text-sm font-bold ${isDarkMode ? "text-white" : "text-slate-800"
+                            }`}
                         >
                           Google Ads
                         </span>
                       </div>
                       <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                          openAccordions.google ? "transform rotate-180" : ""
-                        }`}
+                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${openAccordions.google ? "transform rotate-180" : ""
+                          }`}
                       />
                     </button>
 
@@ -571,11 +1043,10 @@ export default function SettingsPage() {
                               onChange={(e) =>
                                 setGoogleConfig({ ...googleConfig, clientId: e.target.value })
                               }
-                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                                isDarkMode
+                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                                   ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                                   : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                              }`}
+                                }`}
                             />
                           </div>
                           <div>
@@ -588,11 +1059,10 @@ export default function SettingsPage() {
                               onChange={(e) =>
                                 setGoogleConfig({ ...googleConfig, developerToken: e.target.value })
                               }
-                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                                isDarkMode
+                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                                   ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                                   : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                              }`}
+                                }`}
                             />
                           </div>
                           <div>
@@ -605,11 +1075,10 @@ export default function SettingsPage() {
                               onChange={(e) =>
                                 setGoogleConfig({ ...googleConfig, customerId: e.target.value })
                               }
-                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                                isDarkMode
+                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                                   ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                                   : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                              }`}
+                                }`}
                             />
                           </div>
                         </div>
@@ -629,11 +1098,10 @@ export default function SettingsPage() {
 
                   {/* 3. Instagram Ads Accordion Card */}
                   <div
-                    className={`rounded-2xl border transition-all ${
-                      isDarkMode
+                    className={`rounded-2xl border transition-all ${isDarkMode
                         ? "border-slate-800 bg-[#0d1527]"
                         : "border-slate-200 bg-[#f8fafc]"
-                    }`}
+                      }`}
                   >
                     <button
                       onClick={() => toggleAccordion("instagram")}
@@ -644,17 +1112,15 @@ export default function SettingsPage() {
                           <InstagramIcon className="w-4 h-4" />
                         </div>
                         <span
-                          className={`text-sm font-bold ${
-                            isDarkMode ? "text-white" : "text-slate-800"
-                          }`}
+                          className={`text-sm font-bold ${isDarkMode ? "text-white" : "text-slate-800"
+                            }`}
                         >
                           Instagram Ads
                         </span>
                       </div>
                       <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                          openAccordions.instagram ? "transform rotate-180" : ""
-                        }`}
+                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${openAccordions.instagram ? "transform rotate-180" : ""
+                          }`}
                       />
                     </button>
 
@@ -671,11 +1137,10 @@ export default function SettingsPage() {
                               onChange={(e) =>
                                 setInstaConfig({ ...instaConfig, businessAccountId: e.target.value })
                               }
-                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                                isDarkMode
+                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                                   ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                                   : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                              }`}
+                                }`}
                             />
                           </div>
                           <div>
@@ -688,11 +1153,10 @@ export default function SettingsPage() {
                               onChange={(e) =>
                                 setInstaConfig({ ...instaConfig, accessToken: e.target.value })
                               }
-                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                                isDarkMode
+                              className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                                   ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                                   : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                              }`}
+                                }`}
                             />
                           </div>
                         </div>
@@ -726,11 +1190,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setWaConfig({ ...waConfig, businessNumber: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                             : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                        }`}
+                          }`}
                       />
                     </div>
                     <div>
@@ -743,11 +1206,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setWaConfig({ ...waConfig, apiKey: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                             : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                        }`}
+                          }`}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -796,11 +1258,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setSmtpConfig({ ...smtpConfig, host: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                             : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                        }`}
+                          }`}
                       />
                     </div>
                     <div>
@@ -813,11 +1274,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setSmtpConfig({ ...smtpConfig, port: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                             : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                        }`}
+                          }`}
                       />
                     </div>
                     <div>
@@ -830,11 +1290,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setSmtpConfig({ ...smtpConfig, username: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                             : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                        }`}
+                          }`}
                       />
                     </div>
                     <div>
@@ -847,11 +1306,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setSmtpConfig({ ...smtpConfig, password: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800/80 border-slate-700 text-white focus:border-blue-500"
                             : "bg-white border-slate-300 text-slate-800 focus:border-blue-600"
-                        }`}
+                          }`}
                       />
                     </div>
                     <div>
@@ -863,11 +1321,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setSmtpConfig({ ...smtpConfig, encryption: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800 border-slate-700 text-white"
                             : "bg-white border-slate-300 text-slate-800"
-                        }`}
+                          }`}
                       >
                         <option value="TLS">TLS</option>
                         <option value="SSL">SSL</option>
@@ -884,11 +1341,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setSmtpConfig({ ...smtpConfig, fromName: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800/80 border-slate-700 text-white"
                             : "bg-white border-slate-300 text-slate-800"
-                        }`}
+                          }`}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -901,11 +1357,10 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setSmtpConfig({ ...smtpConfig, fromEmail: e.target.value })
                         }
-                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                          isDarkMode
+                        className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                             ? "bg-slate-800/80 border-slate-700 text-white"
                             : "bg-white border-slate-300 text-slate-800"
-                        }`}
+                          }`}
                       />
                     </div>
                   </div>
@@ -963,14 +1418,12 @@ export default function SettingsPage() {
              ===================================================================== */}
           {activeMainTab === "Financial Information" && (
             <div
-              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${
-                isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
-              }`}
+              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
+                }`}
             >
               <h2
-                className={`text-sm font-bold tracking-wide uppercase ${
-                  isDarkMode ? "text-slate-300" : "text-slate-700"
-                }`}
+                className={`text-sm font-bold tracking-wide uppercase ${isDarkMode ? "text-slate-300" : "text-slate-700"
+                  }`}
               >
                 Financial & Invoicing Credentials
               </h2>
@@ -986,11 +1439,10 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setFinancialConfig({ ...financialConfig, currency: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                      isDarkMode
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                         ? "bg-slate-800 border-slate-700 text-white"
                         : "bg-white border-slate-300 text-slate-800"
-                    }`}
+                      }`}
                   />
                 </div>
                 <div>
@@ -1004,11 +1456,10 @@ export default function SettingsPage() {
                       onChange={(e) =>
                         setFinancialConfig({ ...financialConfig, taxName: e.target.value })
                       }
-                      className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                        isDarkMode
+                      className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                           ? "bg-slate-800 border-slate-700 text-white"
                           : "bg-white border-slate-300 text-slate-800"
-                      }`}
+                        }`}
                     />
                     <input
                       type="text"
@@ -1016,11 +1467,10 @@ export default function SettingsPage() {
                       onChange={(e) =>
                         setFinancialConfig({ ...financialConfig, taxRate: e.target.value })
                       }
-                      className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                        isDarkMode
+                      className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                           ? "bg-slate-800 border-slate-700 text-white"
                           : "bg-white border-slate-300 text-slate-800"
-                      }`}
+                        }`}
                     />
                   </div>
                 </div>
@@ -1034,11 +1484,10 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setFinancialConfig({ ...financialConfig, panNo: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                      isDarkMode
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                         ? "bg-slate-800 border-slate-700 text-white"
                         : "bg-white border-slate-300 text-slate-800"
-                    }`}
+                      }`}
                   />
                 </div>
                 <div>
@@ -1051,11 +1500,10 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setFinancialConfig({ ...financialConfig, gstNo: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                      isDarkMode
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                         ? "bg-slate-800 border-slate-700 text-white"
                         : "bg-white border-slate-300 text-slate-800"
-                    }`}
+                      }`}
                   />
                 </div>
               </div>
@@ -1077,14 +1525,12 @@ export default function SettingsPage() {
              ===================================================================== */}
           {activeMainTab === "Table Clear" && (
             <div
-              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${
-                isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
-              }`}
+              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
+                }`}
             >
               <h2
-                className={`text-sm font-bold tracking-wide uppercase ${
-                  isDarkMode ? "text-slate-300" : "text-slate-700"
-                }`}
+                className={`text-sm font-bold tracking-wide uppercase ${isDarkMode ? "text-slate-300" : "text-slate-700"
+                  }`}
               >
                 Database Table Maintenance & Purge
               </h2>
@@ -1126,14 +1572,12 @@ export default function SettingsPage() {
              ===================================================================== */}
           {activeMainTab === "Estimate/Invoice setting" && (
             <div
-              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${
-                isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
-              }`}
+              className={`rounded-2xl border p-6 md:p-8 space-y-6 transition-colors shadow-sm ${isDarkMode ? "bg-[#101b33] border-slate-800" : "bg-white border-slate-200/80"
+                }`}
             >
               <h2
-                className={`text-sm font-bold tracking-wide uppercase ${
-                  isDarkMode ? "text-slate-300" : "text-slate-700"
-                }`}
+                className={`text-sm font-bold tracking-wide uppercase ${isDarkMode ? "text-slate-300" : "text-slate-700"
+                  }`}
               >
                 Estimate & Invoice Templates
               </h2>
@@ -1145,11 +1589,10 @@ export default function SettingsPage() {
                   <input
                     type="text"
                     defaultValue="INV-2026-"
-                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                      isDarkMode
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                         ? "bg-slate-800 border-slate-700 text-white"
                         : "bg-white border-slate-300 text-slate-800"
-                    }`}
+                      }`}
                   />
                 </div>
                 <div>
@@ -1159,11 +1602,10 @@ export default function SettingsPage() {
                   <input
                     type="text"
                     defaultValue="EST-SOLAR-"
-                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${
-                      isDarkMode
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs outline-none transition ${isDarkMode
                         ? "bg-slate-800 border-slate-700 text-white"
                         : "bg-white border-slate-300 text-slate-800"
-                    }`}
+                      }`}
                   />
                 </div>
               </div>

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminHeader from "@/components/AdminHeader";
+import { logsService } from "@/services/api/logs";
 import {
   RotateCw,
   Trash2,
@@ -136,19 +137,62 @@ export default function UserLogsPage() {
   const [perPage, setPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleClearSingle = (id: string) => {
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const res = await logsService.getLogs({ search: searchQuery });
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        const mapped: LogEntry[] = res.data.map((item: any) => ({
+          id: String(item.id),
+          actionedBy: item.actioned_by || "Solar CRM",
+          module: item.module || "General",
+          moduleColor: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
+          takenAction: (item.taken_action || "UPDATE") as any,
+          message: item.message,
+          subtext: item.subtext || "Activity record",
+          createdAt: item.created_at
+            ? new Date(item.created_at).toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "Just now",
+        }));
+        setLogs(mapped);
+      }
+    } catch (e) {
+      // Keep initial fallback logs smoothly
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, [searchQuery]);
+
+  const handleClearSingle = async (id: string) => {
+    try {
+      await logsService.clearLog(id);
+    } catch (e) {}
     setLogs((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (confirm("Are you sure you want to delete all activity logs?")) {
+      try {
+        await logsService.deleteAllLogs();
+      } catch (e) {}
       setLogs([]);
     }
   };
 
   const handleRefresh = () => {
-    setLogs(initialLogs);
+    fetchLogs();
   };
 
   const filteredLogs = logs.filter(

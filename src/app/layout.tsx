@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Jost } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { ToastProvider } from "@/context/ToastContext";
 
 const jost = Jost({
   variable: "--font-jost",
@@ -41,7 +42,9 @@ export default function RootLayout({
         className="min-h-screen bg-white text-[#182521] font-sans antialiased selection:bg-[#F4B942] selection:text-[#073D32]"
         suppressHydrationWarning
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

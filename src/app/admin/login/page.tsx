@@ -2,46 +2,71 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ShieldCheck, Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle, ShieldCheck } from "lucide-react";
+import apiClient from "@/services/api/client";
 
-export default function AdminLoginPage() {
+export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@fableadtech.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("admin@solar.com");
+  const [password, setPassword] = useState("password123");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setSuccessMessage("");
 
-    setTimeout(() => {
-      if (email && password) {
-        // Authenticate Super Admin session
+    try {
+      const response = await apiClient.post("/auth/login", {
+        email,
+        password,
+        device_name: "solar-web-portal",
+      });
+
+      if (response?.data?.token) {
+        const user = response.data.user;
+        setSuccessMessage(`Login successful! Redirecting as ${user.role}...`);
+        localStorage.setItem("crm_auth_token", response.data.token);
         localStorage.setItem(
           "solar_crm_auth",
           JSON.stringify({
-            name: "Solar CRM Administrator",
-            email: email,
-            role: "Super Admin",
-            plan: "Free Plan (Expires: 28-12-2026)",
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            avatar: user.avatar,
+            department: user.department,
+            permissions: user.permissions,
             loginTime: new Date().toISOString(),
           })
         );
-        router.push("/admin/dashboard");
+
+        // Dispatch storage event so sidebar dynamically reacts immediately
+        window.dispatchEvent(new Event("storage"));
+
+        setTimeout(() => {
+          router.push(response.data.redirect || "/admin/dashboard");
+        }, 1000);
       } else {
-        setError("Please enter valid super-admin credentials.");
-        setIsLoading(false);
+        setError("Invalid response received from authentication server.");
       }
-    }, 700);
+    } catch (err: any) {
+      setError(
+        err?.data?.message ||
+          "Authentication failed. Please verify your email and password."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#071328] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background radial ambient glow */}
+    <div className="min-h-screen bg-[#071328] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* Background ambient glow */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#138A62]/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -61,9 +86,12 @@ export default function AdminLoginPage() {
               </span>
             </div>
           </div>
-          <h1 className="text-2xl font-black text-white">Super Admin Portal</h1>
+          <div className="flex items-center justify-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-blue-400" />
+            <h1 className="text-2xl font-black text-white">Login Portal</h1>
+          </div>
           <p className="text-xs text-gray-400 mt-1">
-            Access your solar project workflows, BOM, estimates &amp; deals
+            Access solar CRM modules, workflows, projects &amp; permissions
           </p>
         </div>
 
@@ -76,10 +104,17 @@ export default function AdminLoginPage() {
             </div>
           )}
 
+          {successMessage && (
+            <div className="mb-6 p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl flex items-center gap-2 text-xs text-emerald-300 font-semibold animate-in fade-in">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1" />
+              <span>{successMessage}</span>
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-2">
-                Administrator Email
+                Email Address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -90,21 +125,16 @@ export default function AdminLoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@fableadtech.com"
+                  placeholder="name@solar.com"
                   className="w-full pl-10 pr-4 py-3 bg-[#071328] border border-blue-900/60 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">
-                  Password
-                </label>
-                <span className="text-[11px] text-blue-400 cursor-pointer hover:underline">
-                  Default Demo Access
-                </span>
-              </div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-2">
+                Password
+              </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                   <Lock className="w-4 h-4" />
@@ -136,7 +166,7 @@ export default function AdminLoginPage() {
                 />
                 <span>Remember this terminal</span>
               </label>
-              <span className="text-gray-500 font-mono">v2.4 LTS</span>
+              <span className="text-gray-500 font-mono text-[11px]">Auto Role Detect</span>
             </div>
 
             <button
@@ -145,10 +175,10 @@ export default function AdminLoginPage() {
               className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer"
             >
               {isLoading ? (
-                <span>Authenticating Super-Admin...</span>
+                <span>Signing In...</span>
               ) : (
                 <>
-                  <span>Sign In to Solar CRM</span>
+                  <span>Sign In to CRM</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -156,23 +186,22 @@ export default function AdminLoginPage() {
           </form>
 
           {/* Quick Demo Credentials Info */}
-          <div className="mt-6 pt-5 border-t border-blue-900/40 text-[11px] text-gray-400 flex items-center justify-between">
+          <div className="mt-6 pt-5 border-t border-blue-900/40 text-[11px] text-gray-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <span>Pre-filled Super Admin Demo:</span>
-              <div className="text-blue-300 font-mono font-semibold">
-                admin@fableadtech.com / admin123
+              <span className="text-gray-500">Admin Account:</span>
+              <div className="text-blue-300 font-mono font-medium">
+                admin@solar.com / password123
               </div>
             </div>
-            <Link
-              href="/"
-              className="text-emerald-400 hover:underline font-semibold"
-            >
-              &larr; Public Site
-            </Link>
+            <div>
+              <span className="text-gray-500">Staff Account:</span>
+              <div className="text-emerald-300 font-mono font-medium">
+                staff@solar.com / password123
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
